@@ -18,6 +18,9 @@ use tun::AsyncDevice;
 use tun::TunPacket;
 use tun::TunPacketCodec;
 
+// NOTE: The example works only on linux as of now, it can be made to work on macos also
+// with minor tweaks, thats a TODO
+
 // RUN with RUST_LOG=trace cargo run --example echo_server for full logs, including from smoltcp!
 
 // Note1: the .cargo/config ensures that the cargo test runs as sudo
