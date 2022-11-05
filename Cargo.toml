@@ -1,0 +1,27 @@
+[package]
+name = "l3l4kit"
+version = "0.1.0"
+edition = "2018"
+rust-version = "1.65"
+authors = ["Gopakumar C E"]
+description = "Library to convert l3 packets to l4 data and vice versa"
+homepage = "https://github.com/gopakumarce/l3l4kit"
+repository = "https://github.com/gopakumarce/l3l4kit.git"
+readme = "README.md"
+keywords = ["ip", "tcp", "udp", "network"]
+categories = ["embedded", "network-programming"]
+license = "MIT"
+
+[dependencies]
+log = "0.4.17"
+smoltcp = { git = "https://github.com/gopakumarce/smoltcp.git", branch = "gopa-gat-device", default-features = false,  features = [ "std", "medium-ip",  "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
+managed = "0.8.0"
+priority-queue = "1.2.3"
+
+[dev-dependencies]
+tun = { version = "0.5", features = ["async"] }
+tokio = {version = "1.21.2", features = ["full"]}
+tokio-util = { version="0.6.10", features = ["codec"] }
+futures = "0.3.24"
+env_logger = "0.9.1"
+smoltcp = { git = "https://github.com/gopakumarce/smoltcp.git", branch = "gopa-gat-device", default-features = false,  features = [ "log", "medium-ip", "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
