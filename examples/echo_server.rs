@@ -18,9 +18,6 @@ use tun::AsyncDevice;
 use tun::TunPacket;
 use tun::TunPacketCodec;
 
-// NOTE: The example works only on linux as of now, it can be made to work on macos also
-// with minor tweaks, thats a TODO
-
 // RUN with RUST_LOG=trace cargo run --example echo_server for full logs, including from smoltcp!
 
 // Note1: the .cargo/config ensures that the cargo test runs as sudo
@@ -160,10 +157,29 @@ fn create_tun() -> AsyncDevice {
         .mtu(MTU as i32)
         .netmask((255, 255, 255, 0))
         .up();
-    config.platform(|config| {
-        config.packet_information(false);
-    });
-    tun::create_as_async(&config).unwrap()
+    #[cfg(target_os = "linux")]
+    {
+        config.platform(|config| {
+            config.packet_information(false);
+        });
+        tun::create_as_async(&config).unwrap()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        config.name("utun100");
+
+        let dev = tun::create_as_async(&config).unwrap();
+        #[cfg(target_os = "macos")]
+        let err = std::process::Command::new("route")
+            .arg("add")
+            .arg("-host")
+            .arg("1.2.3.5")
+            .arg("-interface")
+            .arg("utun99")
+            .spawn();
+        trace!("Route add result {:?}", err);
+        dev
+    }
 }
 
 fn init_logging() {

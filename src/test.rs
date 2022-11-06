@@ -23,6 +23,8 @@ use tun::AsyncDevice;
 use tun::TunPacket;
 use tun::TunPacketCodec;
 
+// NOTE: The tests dont work yet on macos, works on linux only at the moment
+
 // RUN with RUST_LOG=trace cargo test for full logs, including from smoltcp!
 
 // Note1: the .cargo/config ensures that the cargo test runs as sudo
@@ -34,6 +36,7 @@ use tun::TunPacketCodec;
 
 const WAIT_FOREVER: Duration = Duration::from_secs(24 * 60 * 60);
 const TEST_PORT: AtomicU16 = AtomicU16::new(1234);
+const MTU: usize = 1500;
 
 type MyL3L4<'a> = L3L4<'a, Vec<u8>>;
 
@@ -115,17 +118,41 @@ async fn transmit_data<'a>(l3l4: &mut MyL3L4<'a>, callbacks: &TestCallbacks, flo
     }
 }
 
-fn create_tun(name: &str, ipaddr: (u8, u8, u8, u8)) -> AsyncDevice {
+fn create_tun(name: usize, ipaddr: (u8, u8, u8, u8)) -> AsyncDevice {
     let mut config = tun::Configuration::default();
     config
-        .name(name)
         .address(ipaddr)
+        .mtu(MTU as i32)
         .netmask((255, 255, 255, 0))
         .up();
-    config.platform(|config| {
-        config.packet_information(true);
-    });
-    tun::create_as_async(&config).unwrap()
+    #[cfg(target_os = "linux")]
+    {
+        let name = format!("tun{}", name);
+        config.name(name);
+        config.platform(|config| {
+            config.packet_information(false);
+        });
+        tun::create_as_async(&config).unwrap()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let route_name = format!("utun{}", name - 1);
+        let name = format!("utun{}", name);
+        let route = format!("{}.{}.{}.{}", ipaddr.0, ipaddr.1, ipaddr.2, ipaddr.3 + 1);
+        config.name(name);
+        config.destination((ipaddr.0, ipaddr.1, ipaddr.2, ipaddr.3 + 1));
+        let dev = tun::create_as_async(&config).unwrap();
+        let err = std::process::Command::new("route")
+            .arg("add")
+            .arg("-host")
+            .arg(route)
+            .arg("-interface")
+            .arg(route_name)
+            .spawn();
+        trace!("Route add result {:?}", err);
+        dev
+    }
 }
 
 fn init_logging() {
@@ -281,10 +308,10 @@ async fn udp_client_read_write(test_port: u16, wait_idle: bool, ipaddr: &str) {
 #[tokio::test]
 async fn test_tcp() {
     init_logging();
-    let device = create_tun("tun0", (1, 2, 3, 4));
+    let device = create_tun(90, (1, 2, 3, 4));
     let stream = device.into_framed();
     let mut l3l4 = L3L4Build::default()
-        .mtu(1500)
+        .mtu(MTU)
         .tcp_buffer_size(64 * 1024)
         .finalize();
     let mut callbacks = TestCallbacks {
@@ -309,10 +336,10 @@ async fn test_tcp() {
 #[tokio::test]
 async fn test_tcp_idle_timeout() {
     init_logging();
-    let device = create_tun("tun1", (1, 2, 4, 4));
+    let device = create_tun(91, (1, 2, 4, 4));
     let stream = device.into_framed();
     let mut l3l4 = L3L4Build::default()
-        .mtu(1500)
+        .mtu(MTU)
         .tcp_buffer_size(64 * 1024)
         .tcp_halfopen_idle_timeout(5) // First idle timeout will kick in and make it half open
         .tcp_idle_timeout(2) // and then half open timer will kick in and terminate the flow
@@ -339,9 +366,9 @@ async fn test_tcp_idle_timeout() {
 #[tokio::test]
 async fn test_udp() {
     init_logging();
-    let device = create_tun("tun2", (1, 2, 5, 4));
+    let device = create_tun(92, (1, 2, 5, 4));
     let stream = device.into_framed();
-    let mut l3l4 = L3L4Build::default().mtu(1500).finalize();
+    let mut l3l4 = L3L4Build::default().mtu(MTU).finalize();
     let mut callbacks = TestCallbacks {
         inner: RefCell::new(TestCallbacksInner {
             device: stream,
@@ -374,12 +401,9 @@ async fn test_udp() {
 #[tokio::test]
 async fn test_udp_idle_timeout() {
     init_logging();
-    let device = create_tun("tun3", (1, 2, 6, 4));
+    let device = create_tun(93, (1, 2, 6, 4));
     let stream = device.into_framed();
-    let mut l3l4 = L3L4Build::default()
-        .mtu(1500)
-        .udp_idle_timeout(3)
-        .finalize();
+    let mut l3l4 = L3L4Build::default().mtu(MTU).udp_idle_timeout(3).finalize();
     let mut callbacks = TestCallbacks {
         inner: RefCell::new(TestCallbacksInner {
             device: stream,

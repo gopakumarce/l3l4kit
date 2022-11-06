@@ -41,8 +41,6 @@ in future indicated by the return value of that API
 
 Below we provide a pseudo code outline of what was described above, a concrete 
 example is https://github.com/gopakumarce/l3l4kit/blob/main/examples/echo_server.rs
-NOTE: The example works only on linux as of now, it can be made to work on macos also
-with minor tweaks, thats a TODO
 
 ```
 struct MyPacketBuf{}
