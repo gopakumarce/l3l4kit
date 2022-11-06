@@ -34,7 +34,7 @@ use tun::TunPacketCodec;
 // tun::Device interface read in new_pkt_or_poll() with some timeout,
 // then we dont need async
 
-const WAIT_FOREVER: Duration = Duration::from_secs(24 * 60 * 60);
+const WAIT_FOR_ONESEC: Duration = Duration::from_secs(1);
 const TEST_PORT: AtomicU16 = AtomicU16::new(1234);
 const MTU: usize = 1500;
 
@@ -173,11 +173,12 @@ async fn new_pkt_or_poll<'a>(
     l3l4: &mut MyL3L4<'a>,
     callbacks: &TestCallbacks,
 ) -> Option<TunPacket> {
-    // If wakeup is None, that means just wakeup on the next Rx packet,  we
-    // just sleep here for an arbitrarily large period of time
+    // If wakeup is None, that means just wakeup on the next Rx packet, i.e sleep
+    // infinitely. But we have tests that depends on us waking up periodically and
+    // checking for states etc.., hence we sleep just one second
     let wakeup = match l3l4.l4_poll(callbacks) {
         Some(wakeup) => wakeup,
-        None => Instant::now() + WAIT_FOREVER,
+        None => Instant::now() + WAIT_FOR_ONESEC,
     };
     trace!("Wakeup after {:?} ", wakeup - Instant::now());
     let mut callbacks_mut = callbacks.inner.borrow_mut();
