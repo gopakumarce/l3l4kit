@@ -40,12 +40,6 @@ where
         if let Some(buffer) = self.rx.take() {
             trace!("Receive called, length {}", buffer.len());
             let rx = RxToken { buffer };
-            // The tx_token being None is fie as per comments in smoltcp Device receive().
-            // The comments say that the tx_token in receive is used only if we expect an
-            // output pkt (like icmp response) which is basically the same as the input pkt
-            // For tcp/udp use case, we dont have anything like that. And the reason why
-            // we cant just pass self.callbacks here is the same lifetime problems mentioned
-            // in transmit() below.
             let tx = TxToken {
                 callbacks: self.callbacks,
             };
@@ -57,14 +51,6 @@ where
     }
 
     fn transmit(&mut self) -> Option<Self::TxToken<'_>> {
-        // The reason why the callbacks has to be "taken" from self is because otherwise
-        // there will be multiple mutable pointers to callbacks - from self, and from
-        // tx_token, and that obviously will cause all sorts of lifetime probles.
-        // We can potentially do something fancy to fix all this, but fancy is not
-        // needed because our usecase is really simple here - in one invocation to
-        // interface.poll(), we expect exatly ONE output packet! So we just need ONE
-        // token. If there are more packets to be sent, interface.poll() will/should be
-        // called again
         trace!("Transmit called");
         Some(TxToken {
             callbacks: self.callbacks,

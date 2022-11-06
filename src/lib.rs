@@ -55,7 +55,7 @@ pub trait Callbacks<T> {
     fn l3_tx_buffer_mut<'tmp>(&self, buffer: &'tmp mut T) -> &'tmp mut [u8];
 
     /// New  data is available for the flow. If the data is None, that means the
-    /// flow has either been fully closed/terminated. Note that we are calling out
+    /// flow has been fully closed/terminated. Note that we are calling out
     /// specifically that None is provided only for "fully" closed flows,
     /// a half-open situation will not be notified to the caller. Half open flows
     /// simply stop providing any more data
@@ -118,10 +118,9 @@ impl<'a, T> L3L4Build<T> {
         self
     }
 
-    /// If the TCP session is in a half open state - i.e either the flow is not fully open yet OR
-    /// the remote end alone is closed or local end alone is closed - and there is no further Rx
-    /// or Tx data excluding ACKs, in this period of time (in seconds), the flow is removed from
-    /// the system. Default is 7200 seconds
+    /// If the TCP session is in a half open state - i.e the remote end alone is closed or local
+    /// end alone is closed - and there is no further Rx or Tx data excluding ACKs, in this
+    /// period of time (in seconds), the flow is removed from the system. Default is 7200 seconds
     pub fn tcp_halfopen_idle_timeout(mut self, tcp_halfopen_idle_timeout: u64) -> Self {
         self.timeouts.tcp_halfopen_idle_timeout = Duration::from_secs(tcp_halfopen_idle_timeout);
         self
@@ -233,7 +232,7 @@ impl<'buf, T> L3L4<'buf, T> {
     /// were not written, the caller should retry the remaining after the next Rx
     /// packet arrives for that flow, the logic being that a next Rx packet for tcp
     /// might ACK more bytes and make room to transmit more data.
-    /// For TCP, a return value of None indicates that either the flow has been
+    /// For TCP, a return value of None indicates that the flow has been
     /// fully closed/terminated. Note that a "half-closed" scenario will not result
     /// in a None output. If the caller has half closed the flow by calling l4_close()
     /// and still attempts to send data after that, the return value will be Option<size>
