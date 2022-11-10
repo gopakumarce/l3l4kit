@@ -40,7 +40,8 @@ in future indicated by the return value of that API
 ## Pseudo code
 
 Below we provide a pseudo code outline of what was described above, a concrete 
-example is https://github.com/gopakumarce/l3l4kit/blob/main/examples/echo_server.rs
+example with a simple echo server is here - https://github.com/gopakumarce/l3l4kit/blob/main/examples/echo_server.rs
+A slightly more complex example with a proxy server is here - https://github.com/gopakumarce/l3l4kit/blob/main/examples/proxy_server.rs
 
 ```
 struct MyPacketBuf{}
