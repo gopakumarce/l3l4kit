@@ -613,7 +613,7 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 [[package]]
 name = "smoltcp"
 version = "0.8.1"
-source = "git+https://github.com/gopakumarce/smoltcp.git?branch=gopa-gat-device#0dce916ec8aa7764496e5b33c6a0bf8e883819b9"
+source = "git+https://github.com/smoltcp-rs/smoltcp.git?branch=master#54a73b0420f317c0b29925b00023f25475d053ee"
 dependencies = [
  "bitflags",
  "byteorder",

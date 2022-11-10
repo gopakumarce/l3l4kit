@@ -14,7 +14,7 @@ license = "MIT"
 
 [dependencies]
 log = "0.4.17"
-smoltcp = { git = "https://github.com/gopakumarce/smoltcp.git", branch = "gopa-gat-device", default-features = false,  features = [ "std", "medium-ip",  "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
+smoltcp = { git = "https://github.com/smoltcp-rs/smoltcp.git", branch = "master", default-features = false,  features = [ "std", "medium-ip",  "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
 managed = "0.8.0"
 priority-queue = "1.2.3"
 
@@ -24,4 +24,4 @@ tokio = {version = "1.21.2", features = ["full"]}
 tokio-util = { version="0.6.10", features = ["codec"] }
 futures = "0.3.24"
 env_logger = "0.9.1"
-smoltcp = { git = "https://github.com/gopakumarce/smoltcp.git", branch = "gopa-gat-device", default-features = false,  features = [ "log", "medium-ip", "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
+smoltcp = { git = "https://github.com/smoltcp-rs/smoltcp.git", branch = "master", default-features = false,  features = [ "log", "medium-ip", "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
