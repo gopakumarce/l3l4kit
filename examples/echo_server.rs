@@ -57,7 +57,7 @@ impl TestCallbacks {
     fn retry_data(&self, flow: &Flow, data: Vec<u8>) {
         let mut inner = self.inner.borrow_mut();
         if let Some(q) = inner.all_flows.get_mut(flow) {
-            q.push_back(data);
+            q.push_front(data);
         }
     }
 
