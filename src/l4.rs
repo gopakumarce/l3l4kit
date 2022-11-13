@@ -25,6 +25,7 @@ pub(crate) struct FlowHandle<'buf, T> {
     pub(crate) poll_at: Instant,
     pub(crate) socket: Option<Socket<'buf>>,
     pub(crate) last_rxtx: Instant,
+    socket_set: SocketSet<'buf>,
     endpoint: Option<IpEndpoint>,
     mtu: usize,
     _phantom: PhantomData<T>,
@@ -62,6 +63,7 @@ impl<'buf, T> FlowHandle<'buf, T> {
             poll_at: Instant::now(),
             socket,
             last_rxtx: Instant::now(),
+            socket_set: SocketSet::new(vec![]),
             endpoint: None,
             mtu,
             _phantom: PhantomData::default(),
@@ -186,22 +188,21 @@ impl<'buf, T> FlowHandle<'buf, T> {
         let has_rx = rx.is_some();
         trace!("poll called, has_rx {}", has_rx);
         let mut pktq = PacketQ::new(self.mtu, rx, callbacks);
-        let mut sockets = SocketSet::new(vec![]);
         let handle = match self.socket.take().unwrap() {
-            Socket::Udp(sock) => sockets.add(sock),
-            Socket::Tcp(sock) => sockets.add(sock),
+            Socket::Udp(sock) => self.socket_set.add(sock),
+            Socket::Tcp(sock) => self.socket_set.add(sock),
         };
         let smol_time: smoltcp::time::Instant = time.into();
         let mut poll_at = Some(smol_time);
-        let ret = iface.poll(smol_time, &mut pktq, &mut sockets);
+        let ret = iface.poll(smol_time, &mut pktq, &mut self.socket_set);
         if let Ok(changed) = ret {
             if !changed {
-                poll_at = iface.poll_at(smol_time, &sockets);
+                poll_at = iface.poll_at(smol_time, &self.socket_set);
             }
         } else {
-            poll_at = iface.poll_at(smol_time, &sockets);
+            poll_at = iface.poll_at(smol_time, &self.socket_set);
         }
-        self.socket = Some(sockets.remove(handle));
+        self.socket = Some(self.socket_set.remove(handle));
         // Since we got an rx packet, see if there is any of that has been
         // terminated to tcp/udp and is available to the caller
         if has_rx {
