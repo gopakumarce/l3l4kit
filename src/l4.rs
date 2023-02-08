@@ -139,14 +139,14 @@ impl<'buf, T> FlowHandle<'buf, T> {
     // Write returns the BytesMut that is unwritten if any, if all the supplied
     // bytes were written succesfully, None is returned. Any errors returned are
     // fatal and qualify for closing/discarding the socket
-    pub(crate) fn write(&mut self, data: &[u8]) -> Result<usize, smoltcp::Error> {
+    pub(crate) fn write(&mut self, data: &[u8]) -> Result<usize, crate::Error> {
         match self.socket.as_mut().unwrap() {
             Socket::Udp(sock) => {
                 if let Some(endpoint) = self.endpoint.as_ref() {
                     match sock.send_slice(data, *endpoint) {
                         Err(e) => match e {
                             udp::SendError::BufferFull => Ok(0),
-                            udp::SendError::Unaddressable => Err(smoltcp::Error::Unaddressable),
+                            udp::SendError::Unaddressable => Err(crate::Error::Unaddressable),
                         },
                         Ok(()) => {
                             self.last_rxtx = Instant::now();
@@ -154,13 +154,13 @@ impl<'buf, T> FlowHandle<'buf, T> {
                         }
                     }
                 } else {
-                    Err(smoltcp::Error::Unaddressable)
+                    Err(crate::Error::Unaddressable)
                 }
             }
             Socket::Tcp(sock) => {
                 if sock.can_send() {
                     match sock.send_slice(data) {
-                        Err(tcp::SendError::InvalidState) => Err(smoltcp::Error::Illegal),
+                        Err(tcp::SendError::InvalidState) => Err(crate::Error::Illegal),
                         Ok(size) => {
                             if size > 0 {
                                 self.last_rxtx = Instant::now();
@@ -194,12 +194,8 @@ impl<'buf, T> FlowHandle<'buf, T> {
         };
         let smol_time: smoltcp::time::Instant = time.into();
         let mut poll_at = Some(smol_time);
-        let ret = iface.poll(smol_time, &mut pktq, &mut self.socket_set);
-        if let Ok(changed) = ret {
-            if !changed {
-                poll_at = iface.poll_at(smol_time, &self.socket_set);
-            }
-        } else {
+        let changed = iface.poll(smol_time, &mut pktq, &mut self.socket_set);
+        if !changed {
             poll_at = iface.poll_at(smol_time, &self.socket_set);
         }
         self.socket = Some(self.socket_set.remove(handle));

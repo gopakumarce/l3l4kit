@@ -3,7 +3,6 @@ use crate::Callbacks;
 use log::trace;
 use smoltcp::phy::{self, Checksum, ChecksumCapabilities, Device, DeviceCapabilities, Medium};
 use smoltcp::time::Instant;
-use smoltcp::Result;
 
 pub(crate) struct PacketQ<'buf, 'ptr, T> {
     mtu: usize,
@@ -36,7 +35,7 @@ where
         device
     }
 
-    fn receive(&mut self) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
+    fn receive(&mut self, _timestamp: Instant) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
         if let Some(buffer) = self.rx.take() {
             trace!("Receive called, length {}", buffer.len());
             let rx = RxToken { buffer };
@@ -50,7 +49,7 @@ where
         }
     }
 
-    fn transmit(&mut self) -> Option<Self::TxToken<'_>> {
+    fn transmit(&mut self, _timestamp: Instant) -> Option<Self::TxToken<'_>> {
         trace!("Transmit called");
         Some(TxToken {
             callbacks: self.callbacks,
@@ -63,9 +62,9 @@ pub(crate) struct RxToken<'buf> {
 }
 
 impl<'buf> phy::RxToken for RxToken<'buf> {
-    fn consume<R, F>(self, _timestamp: Instant, f: F) -> Result<R>
+    fn consume<R, F>(self, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         trace!("rx token consumed");
         f(self.buffer)
@@ -80,9 +79,9 @@ impl<'buf, 'ptr, T> phy::TxToken for TxToken<'ptr, T>
 where
     T: 'buf,
 {
-    fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> Result<R>
+    fn consume<R, F>(self, len: usize, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         if let Some(mut buffer) = self.callbacks.l3_tx_buffer(len) {
             let buf_mut = self.callbacks.l3_tx_buffer_mut(&mut buffer);
@@ -92,7 +91,7 @@ where
             result
         } else {
             trace!("tx token failed, no buffers");
-            Err(smoltcp::Error::Exhausted)
+            f(&mut [])
         }
     }
 }
@@ -124,27 +123,27 @@ impl Device for Dummy {
         device.checksum.udp = Checksum::Tx;
         device
     }
-    fn receive(&mut self) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
+    fn receive(&mut self, _timestamp: Instant) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
         None
     }
-    fn transmit(&mut self) -> Option<Self::TxToken<'_>> {
+    fn transmit(&mut self, _timestamp: Instant) -> Option<Self::TxToken<'_>> {
         None
     }
 }
 
 impl phy::TxToken for TxTokenDummy {
-    fn consume<R, F>(self, _timestamp: Instant, _: usize, f: F) -> Result<R>
+    fn consume<R, F>(self, _: usize, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         f(&mut [])
     }
 }
 
 impl phy::RxToken for RxTokenDummy {
-    fn consume<R, F>(self, _timestamp: Instant, f: F) -> Result<R>
+    fn consume<R, F>(self, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         f(&mut [])
     }

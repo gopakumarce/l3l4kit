@@ -612,8 +612,9 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "smoltcp"
-version = "0.8.1"
-source = "git+https://github.com/smoltcp-rs/smoltcp.git?branch=master#54a73b0420f317c0b29925b00023f25475d053ee"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09b55b1964262837363c9561cbd1ec44a3f0acd23c30c937478470ae42f61504"
 dependencies = [
  "bitflags",
  "byteorder",

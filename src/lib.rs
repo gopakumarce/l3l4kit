@@ -7,19 +7,15 @@ mod test;
 use crate::l4::FlowHandle;
 use crate::packetq::Dummy;
 use log::trace;
-use managed::ManagedMap;
 use priority_queue::PriorityQueue;
+use smoltcp::iface::Config;
 use smoltcp::iface::Interface;
-use smoltcp::iface::InterfaceBuilder;
-use smoltcp::iface::Route;
-use smoltcp::iface::Routes;
 pub use smoltcp::socket::tcp::State;
 pub use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 pub use smoltcp::wire::{Ipv4Address, Ipv6Address};
 use std::cmp::Reverse;
 use std::collections::hash_map::Entry;
-use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::time::Duration;
@@ -76,6 +72,11 @@ impl Default for Timeouts {
             tcp_halfopen_idle_timeout: Duration::from_secs(7200),
         }
     }
+}
+
+pub enum Error {
+    Unaddressable,
+    Illegal,
 }
 
 pub struct L3L4Build<T> {
@@ -142,7 +143,7 @@ impl<'a, T> L3L4Build<T> {
 pub struct L3L4<'buf, T> {
     mtu: usize,
     tcp_bufsize: usize,
-    iface: Interface<'buf>,
+    iface: Interface,
     flows: HashMap<Flow, FlowHandle<'buf, T>>,
     polling: PriorityQueue<Flow, Reverse<Instant>>,
     timeouts: Timeouts,
@@ -157,20 +158,18 @@ impl<'buf, T> L3L4<'buf, T> {
         // dont matter, just add dummy IP and routes
         let dummy_v4 = Ipv4Address::new(1, 2, 3, 4);
         let dummy_v6 = Ipv6Address::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let mut routes = Routes::new(ManagedMap::Owned(BTreeMap::<IpCidr, Route>::new()));
-        routes.add_default_ipv4_route(dummy_v4).ok();
-        routes.add_default_ipv6_route(dummy_v6).ok();
-        let ip_addrs = vec![
-            IpCidr::new(IpAddress::Ipv4(dummy_v4), 24),
-            IpCidr::new(IpAddress::Ipv6(dummy_v6), 64),
-        ];
-        // The finalize() takes a dummy device just to figure out the capabilities
+        // The Interface::new() takes a dummy device just to figure out the capabilities
         // of the device. The actual device is supplied during poll()
-        let iface = InterfaceBuilder::new()
-            .ip_addrs(ip_addrs)
-            .routes(routes)
-            .any_ip(true)
-            .finalize(&mut Dummy::new(mtu));
+        let mut iface = Interface::new(Config::new(), &mut Dummy::new(mtu));
+        iface.update_ip_addrs(|ips| {
+            ips.push(IpCidr::new(IpAddress::Ipv4(dummy_v4), 24))
+                .unwrap();
+            ips.push(IpCidr::new(IpAddress::Ipv6(dummy_v6), 64))
+                .unwrap();
+        });
+        iface.routes_mut().add_default_ipv4_route(dummy_v4).ok();
+        iface.routes_mut().add_default_ipv6_route(dummy_v6).ok();
+        iface.set_any_ip(true);
 
         L3L4 {
             mtu,
